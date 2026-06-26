@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
 const cors= require('cors')
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config()
 const port = 5000;
 
@@ -38,6 +38,48 @@ async function run() {
       const result = await userCollection.find(users).toArray();
       res.send(result)
     })
+    
+app.patch(
+  "/api/users/:id",
+  async (req, res) => {
+    const { id } = req.params;
+    const { title, bio, skills } = req.body; // ফ্রন্টএন্ড থেকে আসা নির্দিষ্ট ফিল্ডগুলো আলাদা করলাম
+
+    try {
+      const result = await userCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { 
+          $set: {
+            title: title,
+            bio: bio,
+            skills: skills // সরাসরি স্ট্রিং-এর অ্যারে হিসেবে সেভ হবে
+          } 
+        }
+      );
+      
+      res.send(result);
+    } catch (error) {
+      console.error("Error patching user:", error);
+      res.status(500).send({ message: "Internal Server Error", error: error.message });
+    }
+  }
+);
+
+    app.get("/api/users/email/:email", async (req, res) => {
+  const user = await userCollection.findOne({
+    email: req.params.email,
+  });
+
+  res.send(user);
+    });
+    
+    app.get("/api/freelancers", async (req, res) => {
+  const freelancers = await userCollection.find({
+    role: "freelancer",
+  }).toArray();
+
+  res.send(freelancers);
+});
     
 
     // task api
