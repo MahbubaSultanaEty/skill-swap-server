@@ -32,17 +32,35 @@ async function run() {
     const userCollection = database.collection("user")
     const taskCollection = database.collection("tasks");
 
+    // users spi
     app.get("/api/users", async (req, res) => {
       const users = req.query;
       const result = await userCollection.find(users).toArray();
       res.send(result)
     })
     
+
+    // task api
     app.post("/api/tasks", async (req, res) => {
       const task = req.body;
       const result = await taskCollection.insertOne(task);
       res.send(result)
- })
+    })
+
+    app.get("/api/tasks", async (req, res) => {
+  const result = await taskCollection.find({}).toArray(); 
+  res.send(result);
+});
+       
+app.get("/api/tasks/:clientId", async (req, res) => {
+  const id = req.params.clientId; 
+  const query = { clientId: id };
+
+  const result = await taskCollection.find(query).toArray();
+  res.send(result);
+});
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
