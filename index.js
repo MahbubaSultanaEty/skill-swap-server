@@ -89,9 +89,38 @@ app.patch(
       res.send(result)
     })
 
-    app.get("/api/tasks", async (req, res) => {
-  const result = await taskCollection.find({}).toArray(); 
-  res.send(result);
+app.get("/api/tasks", async (req, res) => {
+  const query = {};
+
+  if (req.query.clientEmail) query.clientEmail = req.query.clientEmail;
+  if (req.query.category) query.category = req.query.category;
+  if (req.query.status) query.status = req.query.status;
+
+  if (req.query.search) {
+    query.$or = [
+      { title: { $regex: req.query.search, $options: "i" } },
+      { clientName: { $regex: req.query.search, $options: "i" } },
+      { description: { $regex: req.query.search, $options: "i" } },
+    ];
+  }
+
+  let tasks = await taskCollection.find(query).toArray();
+
+  if (req.query.budget) {
+    const [min, max] = req.query.budget.split("-").map(Number);
+    tasks = tasks.filter((t) => {
+      const b = Number(t.budget);
+      return b >= min && b <= max;
+    });
+  }
+
+  const page = Number(req.query.page) || 1;
+  const perPage = Number(req.query.perPage) || 9;
+  const skipItems = (page - 1) * perPage;
+  const total = tasks.length;
+  const paginated = tasks.slice(skipItems, skipItems + perPage);
+
+  res.json({ tasks: paginated, total });
 });
        
 app.get("/api/tasks/:clientId", async (req, res) => {
