@@ -122,6 +122,13 @@ app.get("/api/tasks", async (req, res) => {
 
   res.json({ tasks: paginated, total });
 });
+    
+    app.get("/api/tasks/currentTask/:id", async (req, res) => {
+  const id = req.params.id;
+  const result = await taskCollection.findOne({ _id: new ObjectId(id) });
+  // console.log(result);
+  res.send(result);
+});
        
 app.get("/api/tasks/:clientId", async (req, res) => {
   const id = req.params.clientId; 
@@ -130,6 +137,8 @@ app.get("/api/tasks/:clientId", async (req, res) => {
   const result = await taskCollection.find(query).toArray();
   res.send(result);
 });
+
+
 
 
 
