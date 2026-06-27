@@ -31,6 +31,7 @@ async function run() {
     const database = client.db("skill-swap");
     const userCollection = database.collection("user")
     const taskCollection = database.collection("tasks");
+    const proposalCollection = database.collection("proposals");
 
     // users spi
     app.get("/api/users", async (req, res) => {
@@ -69,7 +70,7 @@ app.patch(
   const user = await userCollection.findOne({
     email: req.params.email,
   });
-
+      if (user._id) return null;
   res.send(user);
     });
     
@@ -138,7 +139,18 @@ app.get("/api/tasks/:clientId", async (req, res) => {
   res.send(result);
 });
 
+    // proposals api
 
+    
+    app.post('/api/proposals', async (req, res) => {
+      const proposal = req.body;
+      const newProposal= {
+        ...proposal,
+        createdAt: new Date()
+      }
+      const result = await proposalCollection.insertOne(newProposal);
+      res.send(result)
+    })
 
 
 
