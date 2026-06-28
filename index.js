@@ -32,6 +32,9 @@ async function run() {
     const userCollection = database.collection("user")
     const taskCollection = database.collection("tasks");
     const proposalCollection = database.collection("proposals");
+    const plansCollection = database.collection("plans");
+    const subscriptionsCollection= database.collection("subscriptions")
+
 
     // users spi
     app.get("/api/users", async (req, res) => {
@@ -140,9 +143,21 @@ app.get("/api/tasks/:clientId", async (req, res) => {
 });
 
     // proposals api
+app.get('/api/proposals', async (req, res) => {
+  const query = {};
+  if (req.query.freelancerEmail) {
+     query.freelancerEmail = req.query.freelancerEmail;
+  }
+   
+  if (req.query.clientId) {
+     query.clientId = req.query.clientId;
+  }
+   
+  const proposals = await proposalCollection.find(query).sort({ submittedAt: -1 }).toArray();
+  res.json(proposals);
+});
 
-    
-    app.post('/api/proposals', async (req, res) => {
+  app.post('/api/proposals', async (req, res) => {
       const proposal = req.body;
       const newProposal= {
         ...proposal,
@@ -152,6 +167,33 @@ app.get("/api/tasks/:clientId", async (req, res) => {
       res.send(result)
     })
 
+    // plans
+    app.get("/api/plans", async (req, res) => {
+      const query = {}
+      if (req.query.plan_id) {
+        query.id= req.query.plan_id
+      }
+      const plan = await plansCollection.findOne(query);
+      res.send(plan)
+    })
+
+    app.post('/api/subscriptions', async (req, res) => {
+      const data = req.body;
+      const subInfo = {
+        ...data,
+        createdAt: new Date()
+      }
+      const result = await subscriptionsCollection.insertOne(subInfo);
+      // update the user plan information
+      const filter = { email: data.email };
+      const updateDocument = {
+        $set: {
+          plan: data.planId
+        }
+      }
+      const updatedResult= await userCollection.updateOne(filter, updateDocument)
+      res.send(updatedResult)
+    })
 
 
     // Send a ping to confirm a successful connection
