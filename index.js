@@ -43,39 +43,30 @@ async function run() {
       res.send(result)
     })
     
-app.patch(
-  "/api/users/:id",
-  async (req, res) => {
-    const { id } = req.params;
-    const { title, bio, skills } = req.body; // ফ্রন্টএন্ড থেকে আসা নির্দিষ্ট ফিল্ডগুলো আলাদা করলাম
+app.patch("/api/users/:id", async (req, res) => {
+  const { id } = req.params;
+  const { name, image, title, bio, skills, hourlyRate } = req.body;
 
-    try {
-      const result = await userCollection.updateOne(
-        { _id: new ObjectId(id) },
-        { 
-          $set: {
-            title: title,
-            bio: bio,
-            skills: skills // সরাসরি স্ট্রিং-এর অ্যারে হিসেবে সেভ হবে
-          } 
-        }
-      );
-      
-      res.send(result);
-    } catch (error) {
-      console.error("Error patching user:", error);
-      res.status(500).send({ message: "Internal Server Error", error: error.message });
-    }
-  }
-);
+  const updateFields = {};
+  if (name !== undefined) updateFields.name = name;
+  if (image !== undefined) updateFields.image = image;
+  if (title !== undefined) updateFields.title = title;
+  if (bio !== undefined) updateFields.bio = bio;
+  if (skills !== undefined) updateFields.skills = skills;
+  if (hourlyRate !== undefined) updateFields.hourlyRate = hourlyRate;
+
+  const result = await userCollection.updateOne(
+    { _id: new ObjectId(id) },
+    { $set: updateFields }
+  );
+
+  res.send(result);
+});
 
     app.get("/api/users/email/:email", async (req, res) => {
-  const user = await userCollection.findOne({
-    email: req.params.email,
-  });
-      if (user._id) return null;
+  const user = await userCollection.findOne({ email: req.params.email });
   res.send(user);
-    });
+});
     
     app.get("/api/freelancers", async (req, res) => {
   const freelancers = await userCollection.find({
