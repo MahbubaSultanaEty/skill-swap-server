@@ -67,6 +67,8 @@ app.patch("/api/users/:id", async (req, res) => {
   const user = await userCollection.findOne({ email: req.params.email });
   res.send(user);
 });
+
+    
     
     app.get("/api/freelancers", async (req, res) => {
   const freelancers = await userCollection.find({
@@ -132,14 +134,16 @@ app.get("/api/tasks/:clientId", async (req, res) => {
   const result = await taskCollection.find(query).toArray();
   res.send(result);
 });
+  
+ 
+    
 
     // proposals api
 app.get('/api/proposals', async (req, res) => {
   const query = {};
   if (req.query.freelancerEmail) {
      query.freelancerEmail = req.query.freelancerEmail;
-  }
-   
+  }   
   if (req.query.clientId) {
      query.clientId = req.query.clientId;
   }
@@ -147,6 +151,8 @@ app.get('/api/proposals', async (req, res) => {
   const proposals = await proposalCollection.find(query).sort({ submittedAt: -1 }).toArray();
   res.json(proposals);
 });
+    
+ 
 
   app.post('/api/proposals', async (req, res) => {
       const proposal = req.body;
