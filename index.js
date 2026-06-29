@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 require("dotenv").config();
 const port = 5000;
 
@@ -22,6 +23,30 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+const JWKS = createRemoteJWKSet(new URL(`${process.env.CLIENT_URL}/api/auth/jwks`))
+
+const verifyToken = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+   if (!authHeader || !authHeader.startsWith("Bearer")) {
+    return res.status(401).json({ msg: "Unauthorized" });
+  }
+
+  const token = authHeader.split(" ")[1];
+  
+   if (!token) {
+    return res.status(401).json({ msg: "Unauthorized" });
+  }
+  try {
+    const { payload } = await jwtVerify(token, JWKS);
+
+    console.log(payload);
+    next()
+  } catch(error) {
+    console.log(error);
+    return res.status(401).json({ msg: "Unauthorized" });
+  }
+}
 
 async function run() {
   try {
@@ -97,12 +122,33 @@ async function run() {
   );
 
   res.send(result);
-});
+    });
+    
+    const verifyClient = (req, res, next) => {
+  if (req.user?.role !== "client") {
+    return res.status(403).json({ message: "Forbidden: Clients only" });
+  }
+  next();
+};
+
+const verifyFreelancer = (req, res, next) => {
+  if (req.user?.role !== "freelancer") {
+    return res.status(403).json({ message: "Forbidden: Freelancers only" });
+  }
+  next();
+};
+
+const verifyAdmin = (req, res, next) => {
+  if (req.user?.role !== "admin") {
+    return res.status(403).json({ message: "Forbidden: Admins only" });
+  }
+  next();
+};
 
 
 
     // task api
-    app.post("/api/tasks", async (req, res) => {
+    app.post("/api/tasks",verifyToken, async (req, res) => {
       const task = req.body;
       const result = await taskCollection.insertOne(task);
       res.send(result);
@@ -150,14 +196,14 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/api/tasks/:clientId", async (req, res) => {
+    app.get("/api/tasks/:clientId", verifyToken, async (req, res) => {
       const id = req.params.clientId;
       const query = { clientId: id };
 
       const result = await taskCollection.find(query).toArray();
       res.send(result);
     });
-    app.patch("/api/tasks/:id/status", async (req, res) => {
+    app.patch("/api/tasks/:id/status", verifyToken, async (req, res) => {
   const { id } = req.params;
   const { status, deliverable_url } = req.body;
 
@@ -171,7 +217,7 @@ async function run() {
   res.send(result);
     });
 
-       app.delete("/api/tasks/:id", async (req, res) => {
+       app.delete("/api/tasks/:id", verifyToken, async (req, res) => {
   const { id } = req.params;
 
   const result = await taskCollection.deleteOne({
