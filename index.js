@@ -40,18 +40,52 @@ const verifyToken = async (req, res, next) => {
   try {
     const { payload } = await jwtVerify(token, JWKS);
 
-    console.log(payload);
-    next()
+    const user = await userCollection.findOne({
+  email: payload.email,
+});
+
+if (!user) {
+  return res.status(401).json({ message: "Unauthorized" });
+}
+
+req.user = user;
+next();
   } catch(error) {
     console.log(error);
     return res.status(401).json({ msg: "Unauthorized" });
   }
 }
 
-async function run() {
-  try {
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    const verifyClient = (req, res, next) => {
+  if (req.user?.role !== "client") {
+    return res.status(403).json({ message: "Forbidden: Clients only" });
+  }
+  next();
+};
+
+const verifyFreelancer = (req, res, next) => {
+  if (req.user?.role !== "freelancer") {
+    return res.status(403).json({ message: "Forbidden: Freelancers only" });
+  }
+  next();
+};
+
+const verifyAdmin = (req, res, next) => {
+  if (req.user?.role !== "admin") {
+    return res.status(403).json({ message: "Forbidden: Admins only" });
+  }
+  next();
+};
+
+
+// async function run() {
+//   try {
+//     // Connect the client to the server	(optional starting in v4.7)
+//     await client.connect();
+
+client.connect(() => {
+  console.log("connecting to mongo db");
+}).catch(console.dir)
 
     const database = client.db("skill-swap");
     const userCollection = database.collection("user");
@@ -94,9 +128,11 @@ async function run() {
         if (!user) {
           return res.status(404).json({ message: "User not found" });
       }
-       if (user.isBlocked) {
-    return res.status(403).json({ message: "Account blocked" });
-  }
+     if (user.isBlocked) {
+  return res.status(403).json({
+    message: "Account blocked",
+  });
+}
       res.send(user);
     });
 
@@ -110,7 +146,7 @@ async function run() {
       res.send(freelancers);
     });
 
-    app.patch("/api/users/:id/block", async (req, res) => {
+    app.patch("/api/users/:id/block", verifyToken, verifyAdmin, async (req, res) => {
   const { id } = req.params;
   const { isBlocked } = req.body;
 
@@ -124,28 +160,6 @@ async function run() {
   res.send(result);
     });
     
-    const verifyClient = (req, res, next) => {
-  if (req.user?.role !== "client") {
-    return res.status(403).json({ message: "Forbidden: Clients only" });
-  }
-  next();
-};
-
-const verifyFreelancer = (req, res, next) => {
-  if (req.user?.role !== "freelancer") {
-    return res.status(403).json({ message: "Forbidden: Freelancers only" });
-  }
-  next();
-};
-
-const verifyAdmin = (req, res, next) => {
-  if (req.user?.role !== "admin") {
-    return res.status(403).json({ message: "Forbidden: Admins only" });
-  }
-  next();
-};
-
-
 
     // task api
     app.post("/api/tasks",verifyToken, async (req, res) => {
@@ -237,7 +251,7 @@ const verifyAdmin = (req, res, next) => {
 
 
     // proposals api
-      app.patch("/api/proposals/:id/status", async (req, res) => {
+      app.patch("/api/proposals/:id/status", verifyToken, async (req, res) => {
   const { id } = req.params;
   const { status, deliverableUrl, completionDate } = req.body;
 
@@ -253,7 +267,7 @@ const verifyAdmin = (req, res, next) => {
 });
     
     // proposals api
-   app.get("/api/proposals", async (req, res) => {
+   app.get("/api/proposals",verifyToken, async (req, res) => {
   const query = {};
 
   if (req.query.freelancerEmail) query.freelancerEmail = req.query.freelancerEmail;
@@ -269,7 +283,7 @@ const verifyAdmin = (req, res, next) => {
   res.json(proposals);
 });
 
-    app.post("/api/proposals", async (req, res) => {
+    app.post("/api/proposals",verifyToken, verifyFreelancer, async (req, res) => {
       const proposal = req.body;
       const newProposal = {
         ...proposal,
@@ -279,15 +293,15 @@ const verifyAdmin = (req, res, next) => {
       res.send(result);
     });
 
-    app.patch("/api/proposals/:id/status", async (req, res) => {
-      const { id } = req.params;
-      const { status } = req.body;
-      const result = await proposalCollection.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: { status } },
-      );
-      res.send(result);
-    });
+    // app.patch("/api/proposals/:id/status", async (req, res) => {
+    //   const { id } = req.params;
+    //   const { status } = req.body;
+    //   const result = await proposalCollection.updateOne(
+    //     { _id: new ObjectId(id) },
+    //     { $set: { status } },
+    //   );
+    //   res.send(result);
+    // });
 
 
     // plans
@@ -332,7 +346,7 @@ const verifyAdmin = (req, res, next) => {
   res.json(reviews);
     });
     
-    app.post("/api/reviews", async (req, res) => {
+    app.post("/api/reviews", verifyToken, verifyClient, async (req, res) => {
   const review = req.body;
   const result = await reviewCollection.insertOne(review);
   res.send(result);
@@ -340,7 +354,7 @@ const verifyAdmin = (req, res, next) => {
 
     
     // payments api
-    app.post("/api/payments", async (req, res) => {
+    app.post("/api/payments",verifyToken, async (req, res) => {
   const payment = req.body;
   const result = await paymentCollection.insertOne(payment);
   res.send(result);
@@ -348,16 +362,16 @@ const verifyAdmin = (req, res, next) => {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!",
-    );
-  } finally {
-    // Ensures that the client will close when you finish/error
-    // await client.close();
-  }
-}
-run().catch(console.dir);
+//     await client.db("admin").command({ ping: 1 });
+//     console.log(
+//       "Pinged your deployment. You successfully connected to MongoDB!",
+//     );
+//   } finally {
+//     // Ensures that the client will close when you finish/error
+//     // await client.close();
+//   }
+// }
+// run().catch(console.dir);
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
@@ -366,3 +380,5 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
+
+module.exports = app;
