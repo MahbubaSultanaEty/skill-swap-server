@@ -35,7 +35,8 @@ async function run() {
     const plansCollection = database.collection("plans");
     const subscriptionsCollection = database.collection("subscriptions");
     const reviewCollection= database.collection("reviews")
-
+    const paymentCollection = database.collection("payments");
+    
     // users spi
     app.get("/api/users", async (req, res) => {
       const users = req.query;
@@ -65,6 +66,12 @@ async function run() {
 
     app.get("/api/users/email/:email", async (req, res) => {
       const user = await userCollection.findOne({ email: req.params.email });
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+      }
+       if (user.isBlocked) {
+    return res.status(403).json({ message: "Account blocked" });
+  }
       res.send(user);
     });
 
@@ -77,6 +84,22 @@ async function run() {
 
       res.send(freelancers);
     });
+
+    app.patch("/api/users/:id/block", async (req, res) => {
+  const { id } = req.params;
+  const { isBlocked } = req.body;
+
+  const result = await userCollection.updateOne(
+    { _id: new ObjectId(id) },
+    {
+      $set: { isBlocked },
+    }
+  );
+
+  res.send(result);
+});
+
+
 
     // task api
     app.post("/api/tasks", async (req, res) => {
@@ -133,9 +156,24 @@ async function run() {
       const result = await taskCollection.find(query).toArray();
       res.send(result);
     });
+    app.patch("/api/tasks/:id/status", async (req, res) => {
+  const { id } = req.params;
+  const { status, deliverable_url } = req.body;
+
+  const updateFields = { status };
+  if (deliverable_url) updateFields.deliverable_url = deliverable_url;
+
+  const result = await taskCollection.updateOne(
+    { _id: id }, 
+    { $set: updateFields }
+  );
+  res.send(result);
+    });
+
+ 
+
 
     // proposals api
-    
       app.patch("/api/proposals/:id/status", async (req, res) => {
   const { id } = req.params;
   const { status, deliverableUrl, completionDate } = req.body;
@@ -237,6 +275,13 @@ async function run() {
   res.send(result);
 });
 
+    
+    // payments api
+    app.post("/api/payments", async (req, res) => {
+  const payment = req.body;
+  const result = await paymentCollection.insertOne(payment);
+  res.send(result);
+});
 
 
     // Send a ping to confirm a successful connection
