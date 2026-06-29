@@ -108,39 +108,40 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/api/tasks", async (req, res) => {
-      const query = {};
+   app.get("/api/tasks", async (req, res) => {
+  const query = {};
 
-      if (req.query.clientEmail) query.clientEmail = req.query.clientEmail;
-      if (req.query.category) query.category = req.query.category;
-      if (req.query.status) query.status = req.query.status;
+  if (req.query.clientEmail) query.clientEmail = req.query.clientEmail;
+  if (req.query.category) query.category = req.query.category;
+  if (req.query.status) query.status = req.query.status;
 
-      if (req.query.search) {
-        query.$or = [
-          { title: { $regex: req.query.search, $options: "i" } },
-          { clientName: { $regex: req.query.search, $options: "i" } },
-          { description: { $regex: req.query.search, $options: "i" } },
-        ];
-      }
+  if (req.query.search) {
+    query.$or = [
+      { title: { $regex: req.query.search, $options: "i" } },
+      { clientName: { $regex: req.query.search, $options: "i" } },
+      { description: { $regex: req.query.search, $options: "i" } },
+    ];
+     }
+    
 
-      let tasks = await taskCollection.find(query).toArray();
+  const page = Number(req.query.page) || 1;
+  const perPage = Number(req.query.perPage) || 9;
+//  console.log("query", req.query);
+  const skip = (page - 1) * perPage;
 
-      if (req.query.budget) {
-        const [min, max] = req.query.budget.split("-").map(Number);
-        tasks = tasks.filter((t) => {
-          const b = Number(t.budget);
-          return b >= min && b <= max;
-        });
-      }
+  const tasks = await taskCollection
+    .find(query)
+    .skip(skip)
+    .limit(perPage)
+    .toArray();
 
-      const page = Number(req.query.page) || 1;
-      const perPage = Number(req.query.perPage) || 9;
-      const skipItems = (page - 1) * perPage;
-      const total = tasks.length;
-      const paginated = tasks.slice(skipItems, skipItems + perPage);
+  const total = await taskCollection.countDocuments(query);
 
-      res.json({ tasks: paginated, total });
-    });
+  res.json({
+    tasks,
+    total,
+  });
+});
 
     app.get("/api/tasks/currentTask/:id", async (req, res) => {
       const id = req.params.id;
@@ -170,6 +171,22 @@ async function run() {
   res.send(result);
     });
 
+       app.delete("/api/tasks/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const result = await taskCollection.deleteOne({
+    _id: new ObjectId(id),
+  });
+
+  if (result.deletedCount === 0) {
+    return res.status(404).send({ message: "Task not found" });
+  }
+
+  res.send({
+    success: true,
+    message: "Task deleted successfully",
+  });
+});
  
 
 
