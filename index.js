@@ -34,6 +34,7 @@ async function run() {
     const proposalCollection = database.collection("proposals");
     const plansCollection = database.collection("plans");
     const subscriptionsCollection = database.collection("subscriptions");
+    const reviewCollection= database.collection("reviews")
 
     // users spi
     app.get("/api/users", async (req, res) => {
@@ -132,6 +133,8 @@ async function run() {
       const result = await taskCollection.find(query).toArray();
       res.send(result);
     });
+
+    // proposals api
     
       app.patch("/api/proposals/:id/status", async (req, res) => {
   const { id } = req.params;
@@ -149,21 +152,21 @@ async function run() {
 });
     
     // proposals api
-    app.get("/api/proposals", async (req, res) => {
-      const query = {};
-      if (req.query.freelancerEmail) {
-        query.freelancerEmail = req.query.freelancerEmail;
-      }
-      if (req.query.clientId) {
-        query.clientId = req.query.clientId;
-      }
+   app.get("/api/proposals", async (req, res) => {
+  const query = {};
 
-      const proposals = await proposalCollection
-        .find(query)
-        .sort({ submittedAt: -1 })
-        .toArray();
-      res.json(proposals);
-    });
+  if (req.query.freelancerEmail) query.freelancerEmail = req.query.freelancerEmail;
+  if (req.query.clientId) query.clientId = req.query.clientId;
+  if (req.query.taskId) query.taskId = req.query.taskId;
+  if (req.query.status) query.status = req.query.status;
+
+  const proposals = await proposalCollection
+    .find(query)
+    .sort({ submittedAt: -1 })
+    .toArray();
+
+  res.json(proposals);
+});
 
     app.post("/api/proposals", async (req, res) => {
       const proposal = req.body;
@@ -216,6 +219,25 @@ async function run() {
       );
       res.send(updatedResult);
     });
+
+
+    // reviews api
+    app.get("/api/reviews", async (req, res) => {
+  const query = {};
+  if (req.query.revieweeEmail) query.revieweeEmail = req.query.revieweeEmail;
+  if (req.query.reviewerEmail) query.reviewerEmail = req.query.reviewerEmail;
+
+  const reviews = await reviewCollection.find(query).sort({ createdAt: -1 }).toArray();
+  res.json(reviews);
+    });
+    
+    app.post("/api/reviews", async (req, res) => {
+  const review = req.body;
+  const result = await reviewCollection.insertOne(review);
+  res.send(result);
+});
+
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
