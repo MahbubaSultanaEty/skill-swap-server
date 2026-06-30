@@ -353,7 +353,7 @@ async function startServer() {
     res.send(result);
   });
 
-  console.log("All routes registered");
+  console.log("All routes Registered ");
 }
 
 startServer().catch(console.dir);
