@@ -210,13 +210,14 @@ client.connect(() => {
       res.send(result);
     });
 
-    app.get("/api/tasks/:clientId", verifyToken, async (req, res) => {
-      const id = req.params.clientId;
-      const query = { clientId: id };
+    app.get("/api/tasks/:clientId", async (req, res) => {
+  console.log("HIT clientId route:", req.params.clientId);
+  const id = req.params.clientId;
+  const query = { clientId: id };
+  const result = await taskCollection.find(query).toArray();
+  res.send(result);
+});
 
-      const result = await taskCollection.find(query).toArray();
-      res.send(result);
-    });
     app.patch("/api/tasks/:id/status", verifyToken, async (req, res) => {
   const { id } = req.params;
   const { status, deliverable_url } = req.body;
